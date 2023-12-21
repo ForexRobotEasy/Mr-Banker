@@ -1,0 +1,105 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                                   Mr Banker EA   |
+//|                   https://www.forexroboteasy.com                  |
+//|                                                  Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+
+// Define input parameters
+input int OrderExpiration = 60; // Time in minutes for pending order expiration
+input double LotSize = 0.1; // Size of the trading lot
+input double StopLoss = 50; // Stop loss in pips
+input double TakeProfit = 100; // Take profit in pips
+
+// Define global variables
+datetime lastOrderOpenTime; // Last time a pending order was opened
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//| Expert initialization function                                   |
+//|                                                                  |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    // Set the New York trading session start and end times
+    datetime sessionStartTime = D'08:00';
+    datetime sessionEndTime = D'16:00';
+
+    // Set the EA to trade only during the New York trading session
+    if (TimeCurrent() < sessionStartTime || TimeCurrent() > sessionEndTime)
+    {
+        Print('Mr Banker EA is inactive outside the New York trading session.');
+        return INIT_FAILED;
+    }
+
+    // Set the last order open time to the current time
+    lastOrderOpenTime = TimeCurrent();
+
+    return INIT_SUCCEEDED;
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//| Expert tick function                                             |
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+    // Check if a pending order is already open
+    if (OrdersTotal() > 0)
+    {
+        return;
+    }
+
+    // Check if it's a new trading day
+    if (TimeCurrent() < TimeDay1(lastOrderOpenTime))
+    {
+        return;
+    }
+
+    // Implement Gopher I strategy to determine entry level
+    double entryLevel = iClose(_Symbol, PERIOD_D1, 1);
+
+    // Calculate support and resistance levels based on advanced price movement strategy
+    double supportLevel = entryLevel - (StopLoss * _Point);
+    double resistanceLevel = entryLevel + (TakeProfit * _Point);
+
+    // Open a pending buy order at the support level
+    int ticket = OrderSend(_Symbol, OP_BUYSTOP, LotSize, supportLevel, 0, 0, 0, 'Mr Banker', OrderExpiration, Green);
+
+    // Check if the order was successfully opened
+    if (ticket > 0)
+    {
+        Print('Pending buy order opened at ', supportLevel);
+        lastOrderOpenTime = TimeCurrent();
+    }
+    else
+    {
+        Print('Failed to open pending buy order. Error code: ', GetLastError());
+    }
+
+    // Open a pending sell order at the resistance level
+    ticket = OrderSend(_Symbol, OP_SELLSTOP, LotSize, resistanceLevel, 0, 0, 0, 'Mr Banker', OrderExpiration, Red);
+
+    // Check if the order was successfully opened
+    if (ticket > 0)
+    {
+        Print('Pending sell order opened at ', resistanceLevel);
+        lastOrderOpenTime = TimeCurrent();
+    }
+    else
+    {
+        Print('Failed to open pending sell order. Error code: ', GetLastError());
+    }
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//| Expert deinitialization function                                 |
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+    // Perform any necessary cleanup before the EA is removed from the chart
+    Print('Mr Banker EA deinitialized.');
+}
